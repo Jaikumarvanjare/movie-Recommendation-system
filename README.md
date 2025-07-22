@@ -164,9 +164,9 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## 📫 Contact
 
-Your Name - [@mylinkedin](https://www.linkedin.com/in/jai-kumar-vanj/)
+Your Name - [@Jai Kumar Vanjare](https://www.linkedin.com/in/jai-kumar-vanj/)
 
-Project Link: [https://github.com/yourusername/cinematch-pro](https://github.com/Jaikumarvanjare/movie-Recommendation-system)
+Project Link: (https://github.com/Jaikumarvanjare/movie-Recommendation-system)
 
 ## 📚 Citation
 
