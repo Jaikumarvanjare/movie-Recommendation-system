@@ -1,0 +1,58 @@
+/* General Styling */
+.stApp {
+    background-color: #000000;
+}
+
+/* Style for recommendation columns */
+[data-testid="stHorizontalBlock"] {
+    text-align: center;
+}
+
+/* Image styling with hover effect */
+div[data-testid="stImage"] img {
+    border-radius: 15px;
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+div[data-testid="stImage"] img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(246, 51, 102, 0.4);
+}
+
+/* Style for movie titles (captions) */
+[data-testid="stCaptionContainer"] {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fafafa;
+    margin-top: 10px;
+}
+
+/* Style for the main button */
+.stButton>button {
+    border-radius: 20px;
+    border: 2px solid #f63366;
+    color: #f63366;
+    background-color: transparent;
+    transition: all 0.3s;
+}
+
+.stButton>button:hover {
+    border-color: #ffffff;
+    color: #ffffff;
+    background-color: #f63366;
+}
+
+/* --- Carousel Styling Fix --- */
+[data-testid="stFrame"] [data-testid="stHorizontalBlock"] > div {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+[data-testid="stFrame"] [data-testid="stImage"] {
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-shrink: 0;
+    width: 160px;
+}
