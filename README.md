@@ -7,7 +7,7 @@ This application helps users discover new movies based on their interests by sug
 
 🎥 **Demo Video:**
 
-[https://github.com/Jaikumarvanjare/Movie-Recommendation-System/blob/main/demo.mp4](https://github.com/Jaikumarvanjare/Movie-Recommendation-System/blob/main/demo.mp4)
+[https://github.com/Jaikumarvanjare/Movie-Recommendation-System/demo.mp4](https://github.com/Jaikumarvanjare/Movie-Recommendation-System/demo.mp4)
 
 ---
 
@@ -69,7 +69,6 @@ Movie-Recommendation-System/
 │
 ├── app.py                # Main Streamlit application
 ├── movies.pkl            # Preprocessed movie data
-├── similarity.pkl        # Precomputed cosine similarity matrix
 ├── demo.mp4              # Demo video
 ├── README.md             # Project documentation
 └── requirements.txt      # Dependencies
@@ -79,7 +78,7 @@ Movie-Recommendation-System/
 
 ## 📸 Preview
 
-![[Uploading image.png…]()](https://raw.githubusercontent.com/Jaikumarvanjare/Movie-Recommendation-System/main/screenshot.png)
+(https://raw.githubusercontent.com/Jaikumarvanjare/Movie-Recommendation-System/screenshot.png)
 
 ---
 
