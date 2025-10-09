@@ -1,132 +1,291 @@
-# ----------------------------------------------------------------------
-# MOVIE RECOMMENDER SYSTEM
-# Author: JAIKUMAR J
-# Last Updated: September 20, 2025
-# ----------------------------------------------------------------------
-
+import pandas as pd
 import streamlit as st
-import pickle
 import requests
-import streamlit.components.v1 as components
+import time
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# --- PAGE CONFIGURATION ---
-st.set_page_config(
-    page_title="Movie Recommender",
-    page_icon="🎬",
-    layout="wide"
-)
+# --- CONFIGURATION & SETUP ---
 
-# --- LOAD CUSTOM CSS ---
-def local_css(file_name):
-    """Loads a local CSS file for custom styling."""
+# Set Streamlit page configuration
+st.set_page_config(layout="wide")
+
+# Securely load the API key from Streamlit's secrets manager
+try:
+    API_KEY_AUTH = st.secrets["TMDB_API_KEY"]
+except KeyError:
+    st.error("TMDb API key not found. Please add it to your Streamlit secrets.")
+    st.stop()
+
+# Constants for API and image URLs
+POSTER_BASE_URL = "https://image.tmdb.org/t/p/w500/"
+PLACEHOLDER_IMAGE_URL = "https://via.placeholder.com/500x750.png?text=Poster+Not+Available"
+
+# Create a persistent session object to reuse connections for efficiency
+session = requests.Session()
+
+
+# --- DATA LOADING & MODELING (with Caching) ---
+
+@st.cache_data
+def load_data_and_build_model(data_path='data.csv'):
+    """
+    Loads the movie dataset, creates the recommendation model, and calculates the
+    similarity matrix. The @st.cache_data decorator ensures this heavy computation
+    only runs once.
+    Returns:
+        DataFrame, similarity_matrix, list of movie titles
+    """
     try:
-        with open(file_name) as f:
-            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-    except FileNotFoundError:
-        st.error(f"CSS file not found. Please ensure '{file_name}' is in the '.streamlit' directory.")
-
-local_css(".streamlit/style.css")
-
-# --- DATA LOADING ---
-@st.cache_data(show_spinner="Loading models...")
-def load_data():
-    """Loads movie data and similarity matrix from pickle files."""
-    try:
-        with open("movies_list.pkl", 'rb') as f:
-            movies = pickle.load(f)
-        with open("similarity.pkl", 'rb') as f:
-            similarity = pickle.load(f)
-        return movies, similarity
-    except FileNotFoundError:
-        st.error("Model files not found. Please ensure 'movies_list.pkl' and 'similarity.pkl' exist.")
-        return None, None
-
-# --- API FETCHING ---
-@st.cache_data(show_spinner=False)
-def fetch_poster(movie_id):
-    """Fetches a movie poster URL from TMDb API, returning None on failure."""
-    try:
-        api_key = st.secrets["tmdb"]["api_key"]
-        url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={api_key}"
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        poster_path = data.get('poster_path')
-        return "https://image.tmdb.org/t/p/w500/" + poster_path if poster_path else None
-    except (requests.RequestException, KeyError):
-        return None
-
-# --- CORE RECOMMENDATION LOGIC ---
-def recommend(movie_title, movies_df, similarity_matrix):
-    """Finds up to 5 recommendations that have valid posters."""
-    try:
-        movie_index = movies_df[movies_df['title'] == movie_title].index[0]
-        distances = similarity_matrix[movie_index]
-        movies_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:16]
+        df = pd.read_csv(data_path)
         
-        recommended_movies, recommended_posters = [], []
+        # Create the feature vectors from the 'tags' column using CountVectorizer
+        cv = CountVectorizer(max_features=5000, stop_words='english')
+        vectors = cv.fit_transform(df['tags']).toarray()
         
-        for i in movies_list:
-            if len(recommended_movies) >= 5:
-                break
-            movie_id = movies_df.iloc[i[0]].id
-            poster_url = fetch_poster(movie_id)
-            if poster_url:
-                recommended_movies.append(movies_df.iloc[i[0]].title)
-                recommended_posters.append(poster_url)
-        return recommended_movies, recommended_posters
-    except IndexError:
-        st.error("Movie not found in the dataset.")
-        return [], []
+        # Calculate the cosine similarity matrix
+        similarity = cosine_similarity(vectors)
+        
+        titles = df['title'].values
+        return df, similarity, titles
+        
+    except FileNotFoundError:
+        st.error(f"The data file '{data_path}' was not found. Please make sure it's in the correct directory.")
+        return None, None, None
 
-# --- MAIN APP INTERFACE ---
-st.title('🎬 Movie Recommender System')
+# Load the data and model
+df, similarity, titles = load_data_and_build_model()
 
-movies, similarity = load_data()
 
-if movies is not None and similarity is not None:
-    # --- STABLE IMAGE CAROUSEL ---
+# --- HELPER FUNCTIONS ---
+
+def fetch_movie_details(movie_id):
+    """
+    Fetches movie poster and overview from the TMDb API. Includes a retry mechanism
+    for robustness against transient network errors.
+    """
+    retries = 3
+    for i in range(retries):
+        try:
+            url = f'https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY_AUTH}'
+            response = session.get(url, timeout=10)
+            response.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
+            data = response.json()
+
+            poster_path = POSTER_BASE_URL + data['poster_path'] if data.get('poster_path') else None
+            overview = data.get('overview', 'No description available.')
+            title = data.get('title', 'Title not found.')
+            return title, poster_path, overview
+
+        except requests.exceptions.RequestException as e:
+            if i < retries - 1:
+                time.sleep(0.5) # Wait before retrying
+                continue
+            else:
+                # On final retry failure, return placeholder
+                return "Error", PLACEHOLDER_IMAGE_URL, "Could not fetch movie details."
+
+def get_recommendations(movie_title):
+    """
+    Finds top similar movies and fetches their details concurrently,
+    filtering out any movies for which a poster could not be fetched.
+    """
+    if df is None:
+        return []
+
+    try:
+        movie_index = df[df['title'] == movie_title].index[0]
+        distances = similarity[movie_index]
+        movies_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:31]
+        
+        movie_ids_to_fetch = [df.iloc[i[0]]['movie_id'] for i in movies_list]
+        
+        recommendations = []
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_id = {executor.submit(fetch_movie_details, movie_id): movie_id for movie_id in movie_ids_to_fetch}
+            
+            for future in as_completed(future_to_id):
+                try:
+                    title, poster, overview = future.result()
+                    if poster: # Only include movies with a valid poster
+                        recommendations.append({'title': title, 'poster': poster, 'overview': overview})
+                except Exception as exc:
+                    st.error(f'An error occurred while fetching movie details: {exc}')
+
+        return recommendations[:20] # Return the first 20 valid recommendations
+        
+    except (IndexError, KeyError):
+        st.error(f"Movie '{movie_title}' not found in the dataset.")
+        return []
+
+@st.cache_data
+def get_demo_movies():
+    """
+    Fetches details for a predefined list of popular movies to display on load.
+    Results are cached to prevent re-fetching on every script rerun.
+    """
+    demo_movie_ids = [299534, 155, 680, 27205, 157336, 475557, 634649, 438631, 603, 13]
     
-    # Initialize carousel movie list in session state if it doesn't exist
-    if 'carousel_movies' not in st.session_state:
-        try:
-            sample_df = movies.sample(n=12)
-            image_urls = [fetch_poster(movie_id) for movie_id in sample_df['id'].values]
-            # Store the valid URLs in session state
-            st.session_state.carousel_movies = [url for url in image_urls if url]
-        except Exception:
-            st.session_state.carousel_movies = []
+    demo_movies = []
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_id = {executor.submit(fetch_movie_details, movie_id): movie_id for movie_id in demo_movie_ids}
+        for future in as_completed(future_to_id):
+            try:
+                title, poster, overview = future.result()
+                if poster:
+                    demo_movies.append({'title': title, 'poster': poster, 'overview': overview})
+            except Exception:
+                pass # Ignore errors for demo movies
+    return demo_movies
 
-    # Display the carousel using the list from session state
-    if st.session_state.carousel_movies:
-        try:
-            imageCarouselComponent = components.declare_component("image-carousel-component", path="frontend/public")
-            imageCarouselComponent(imageUrls=st.session_state.carousel_movies, height=250)
-        except Exception as e:
-            st.error(f"Error loading image carousel: {e}")
+# --- STREAMLIT UI ---
 
-    # --- USER INPUT SECTION ---
-    movie_list = movies['title'].values
+if titles is not None:
+    # Custom CSS for dark theme, carousels, and poster overlay effect
+    st.markdown("""
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+            
+            /* Global Styles & Dark Theme */
+            html, body, [class*="st-"], button { font-family: 'Poppins', sans-serif; }
+            body, .stApp { background-color: #0e1117; color: #fafafa; }
+            #MainMenu, footer, header { visibility: hidden; }
+
+            /* Custom Button Style */
+            div[data-testid="stButton"] > button {
+                background-color: #d33639; color: white; border: none; border-radius: 8px;
+                padding: 10px 20px; transition: background-color 0.3s ease;
+            }
+            div[data-testid="stButton"] > button:hover { background-color: #b02a2d; }
+
+            /* Carousel Styling (for demo carousel) */
+            .carousel-wrapper { position: relative; margin-bottom: 2rem; }
+            .carousel-container { display: flex; overflow-x: auto; padding: 20px 10px;
+                                 scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none; }
+            .carousel-container::-webkit-scrollbar { display: none; }
+            .carousel-item { flex: 0 0 auto; width: 220px; margin-right: 20px; }
+            
+            .carousel-button {
+                position: absolute; top: 50%; transform: translateY(-50%);
+                background-color: rgba(0, 0, 0, 0.5); color: white; border: none;
+                border-radius: 50%; width: 40px; height: 40px; font-size: 24px;
+                cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center;
+            }
+            .carousel-button:hover { background-color: rgba(0, 0, 0, 0.8); }
+            .carousel-button.prev { left: -15px; }
+            .carousel-button.next { right: -15px; }
+
+            /* Movie Card with Hover Overlay */
+            .movie-card { position: relative; border-radius: 10px; overflow: hidden;
+                          cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+            .movie-card:hover { transform: scale(1.05); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+            .movie-card img { display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; }
+            .overlay {
+                position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                background: linear-gradient(to top, rgba(0,0,0,0.95) 20%, rgba(0,0,0,0));
+                color: white; opacity: 0; transition: opacity 0.3s ease; padding: 1rem;
+                display: flex; flex-direction: column; justify-content: flex-end;
+            }
+            .movie-card:hover .overlay { opacity: 1; }
+            .overlay-title { font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem; }
+            .overlay-overview {
+                font-size: 0.75rem; max-height: 100px; overflow-y: auto;
+                scrollbar-width: thin; scrollbar-color: #555 #262730;
+            }
+            .overlay-overview::-webkit-scrollbar { width: 5px; }
+            .overlay-overview::-webkit-scrollbar-track { background: #262730; }
+            .overlay-overview::-webkit-scrollbar-thumb { background-color: #555; border-radius: 6px; }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.title('🎬 MOVIE ')
+
+    # --- DEMO CAROUSEL ---
+    st.subheader("Featured Movies")
+    demo_movies = get_demo_movies()
+    if demo_movies:
+        demo_cards_html = ""
+        for movie in demo_movies:
+            demo_cards_html += f"""
+            <div class="carousel-item">
+                <div class="movie-card">
+                    <img src="{movie['poster']}" alt="{movie['title']} poster">
+                    <div class="overlay">
+                        <p class="overlay-title">{movie['title']}</p>
+                        <p class="overlay-overview">{movie['overview']}</p>
+                    </div>
+                </div>
+            </div>
+            """
+        st.markdown(f"""
+            <div class="carousel-wrapper">
+                <button class="carousel-button prev" onclick="scrollCarousel('demoCarousel', 'prev')">&lt;</button>
+                <div class="carousel-container" id="demoCarousel">{demo_cards_html}</div>
+                <button class="carousel-button next" onclick="scrollCarousel('demoCarousel', 'next')">&gt;</button>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # --- RECOMMENDATION SECTION ---
+    st.subheader("Get Personal Recommendations")
     selected_movie = st.selectbox(
-        "Type or select a movie you like to get a recommendation:", 
-        movie_list,
-        index=None,
-        placeholder="Select a movie..."
+        'Select a movie you like, and I will recommend similar ones:',
+        options=titles,
+        key='movie_select'
     )
 
-    # --- RECOMMENDATION DISPLAY ---
-    if selected_movie:
-        if st.button('Recommend', type="primary", use_container_width=True):
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.subheader(f"Recommendations for '{selected_movie}':")
-            
-            names, posters = recommend(selected_movie, movies, similarity)
-            
-            if names:
-                cols = st.columns(len(names), gap="large")
-                for i, (name, poster) in enumerate(zip(names, posters)):
-                    with cols[i]:
-                        st.image(poster, use_column_width='always')
-                        st.caption(name)
+    if 'recommendations' not in st.session_state:
+        st.session_state.recommendations = None
+
+    if st.button('Recommend Movies'):
+        with st.spinner('Finding recommendations for you...'):
+            recommendations = get_recommendations(selected_movie)
+            if recommendations:
+                st.session_state.recommendations = recommendations
             else:
-                st.warning("Could not find enough recommendations with available posters.")
+                st.session_state.recommendations = None
+                st.warning("Could not generate recommendations. Please try another movie.")
+
+    if st.session_state.recommendations:
+        recs = st.session_state.recommendations
+        
+        # Define the number of columns for the grid
+        num_cols = 5
+        # Calculate the number of rows needed
+        num_rows = (len(recs) + num_cols - 1) // num_cols
+
+        # Create a grid of recommendations
+        for i in range(num_rows):
+            cols = st.columns(num_cols)
+            for j in range(num_cols):
+                movie_index = i * num_cols + j
+                if movie_index < len(recs):
+                    with cols[j]:
+                        movie = recs[movie_index]
+                        st.markdown(f"""
+                            <div class="movie-card" style="margin-bottom: 20px;">
+                                <img src="{movie['poster']}" alt="{movie['title']} poster">
+                                <div class="overlay">
+                                    <p class="overlay-title">{movie['title']}</p>
+                                    <p class="overlay-overview">{movie['overview']}</p>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+    
+    # --- JAVASCRIPT FOR CAROUSEL ---
+    st.markdown("""
+        <script>
+            function scrollCarousel(carouselId, direction) {
+                const carousel = document.getElementById(carouselId);
+                if (carousel) {
+                    const scrollAmount = 240; // Width of item + margin
+                    if (direction === 'prev') {
+                        carousel.scrollLeft -= scrollAmount;
+                    } else {
+                        carousel.scrollLeft += scrollAmount;
+                    }
+                }
+            }
+        </script>
+    """, unsafe_allow_html=True)
+
