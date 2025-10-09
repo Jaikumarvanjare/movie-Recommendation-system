@@ -1,4 +1,4 @@
- 🎬 Movie Recommender System
+# <p align='center'>Movie Recommender System</p>
 
 A simple and intuitive **Movie Recommendation System** built with **Streamlit**.
 This application helps users discover new movies based on their interests by suggesting films similar to one they've selected.
@@ -36,7 +36,7 @@ This recommendation system uses a **content-based filtering** approach. Here's a
    Using **cosine similarity**, the system computes how close one movie is to another in terms of content.
 
 5. **Recommendation:**
-   The top 5 most similar movies are displayed as recommendations.
+   The top 20 most similar movies are displayed as recommendations.
 
 ---
 
