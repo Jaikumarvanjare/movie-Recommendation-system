@@ -1,50 +1,99 @@
-🎬 Movie Recommender System
-A simple and intuitive movie recommendation system built with Streamlit. This application helps users discover new movies based on their interests by suggesting films similar to one they've selected.
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/6f0fbce3-c6a2-4dc4-abd6-81a13284078e" /># 🎬 Movie Recommender System
 
-Live Demo: https://movie-recommendation-system-gzi2prtm5gxqq5hjnthstd.streamlit.app/
+A simple and intuitive **Movie Recommendation System** built with **Streamlit**.
+This application helps users discover new movies based on their interests by suggesting films similar to one they've selected.
 
-✨ Features
-User-friendly Interface: A clean and simple UI for easy navigation.
+🔗 **Live Demo:** [Movie Recommender App](https://movie-recommendation-system-gzi2prtm5gxqq5hjnthstd.streamlit.app/)
 
-Vast Movie Selection: Choose from a large database of movies.
+🎥 **Demo Video:**
 
-Instant Recommendations: Get a list of 5 similar movies instantly.
+[https://github.com/Jaikumarvanjare/Movie-Recommendation-System/blob/main/demo.mp4](https://github.com/Jaikumarvanjare/Movie-Recommendation-System/blob/main/demo.mp4)
 
-Content-Based Filtering: Recommendations are generated based on movie tags, genres, cast, and director to find stylistically similar films.
+---
 
-🧠 How It Works
-This recommendation system uses a content-based filtering approach. Here's a simplified breakdown of the logic:
+## ✨ Features
 
-Data Collection: The model is trained on a movie dataset that includes details like genres, keywords, cast, and crew for each film.
+* 🎨 **User-friendly Interface:** A clean and simple UI for easy navigation.
+* 🎞️ **Vast Movie Selection:** Choose from a large database of movies.
+* ⚡ **Instant Recommendations:** Get a list of 5 similar movies instantly.
+* 🧩 **Content-Based Filtering:** Recommendations are generated using movie tags, genres, cast, and director to find stylistically similar films.
 
-Feature Engineering: Relevant text-based features (like cast, director, and genres) are combined into a single "tags" string for each movie.
+---
 
-Vectorization: The "tags" for all movies are converted into numerical vectors using a technique called TF-IDF (Term Frequency-Inverse Document Frequency). This allows us to represent each movie as a point in a multi-dimensional space.
+## 🧠 How It Works
 
-Similarity Calculation: The cosine similarity is calculated between the vector of the user's selected movie and the vectors of all other movies. A higher cosine similarity score means the movies are more alike in content.
+This recommendation system uses a **content-based filtering** approach. Here's a simplified overview:
 
-Recommendation: The top 5 movies with the highest similarity scores are returned as the recommendations.
+1. **Data Collection:**
+   The model is trained on a movie dataset (TMDB 5000) containing genres, keywords, cast, and crew for each film.
 
-🛠️ Technologies Used
-Python: The core programming language.
+2. **Feature Engineering:**
+   Relevant features (like cast, director, and genres) are combined into a single text field called **“tags”** for each movie.
 
-Streamlit: For building and deploying the interactive web application.
+3. **Vectorization:**
+   The tags are transformed into numerical vectors using **TF-IDF (Term Frequency–Inverse Document Frequency)**, representing each movie in multi-dimensional space.
 
-Pandas: For data manipulation and processing.
+4. **Similarity Calculation:**
+   Using **cosine similarity**, the system computes how close one movie is to another in terms of content.
 
-Scikit-learn: For implementing TF-IDF vectorization and calculating cosine similarity.
+5. **Recommendation:**
+   The top 5 most similar movies are displayed as recommendations.
 
-TMDB 5000 Movie Dataset: The dataset used to power the recommendations.
+---
 
-🚀 How to Use
-Navigate to the live application.
+## 🛠️ Technologies Used
 
-Click on the dropdown menu labeled "Select a movie you like".
+| Technology                  | Purpose                                    |
+| --------------------------- | ------------------------------------------ |
+| **Python**                  | Core programming language                  |
+| **Streamlit**               | Building and deploying the web app         |
+| **Pandas**                  | Data manipulation and processing           |
+| **Scikit-learn**            | TF-IDF vectorization and cosine similarity |
+| **TMDB 5000 Movie Dataset** | Dataset powering the recommendations       |
 
-Choose a movie from the list.
+---
 
-Click the "Recommend" button.
+## 🚀 How to Use
 
-View the list of recommended movies that appears below!
+1. Visit the [Live App](https://movie-recommendation-system-gzi2prtm5gxqq5hjnthstd.streamlit.app/).
+2. Select a movie from the dropdown list.
+3. Click the **“Recommend”** button.
+4. Instantly view the top 5 recommended movies below!
 
-This README was generated to provide documentation for the Streamlit application. Feel free to use and modify it.
+---
+
+## 📂 Project Structure
+
+```
+Movie-Recommendation-System/
+│
+├── app.py                # Main Streamlit application
+├── movies.pkl            # Preprocessed movie data
+├── similarity.pkl        # Precomputed cosine similarity matrix
+├── demo.mp4              # Demo video
+├── README.md             # Project documentation
+└── requirements.txt      # Dependencies
+```
+
+---
+
+## 📸 Preview
+
+![[Uploading image.png…]()](https://raw.githubusercontent.com/Jaikumarvanjare/Movie-Recommendation-System/main/screenshot.png)
+
+---
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome!
+Feel free to fork this repo and submit a pull request.
+
+---
+
+## 🧾 License
+
+This project is open-source and available under the [MIT License](LICENSE).
+
+---
+
+⭐ **If you like this project, consider giving it a star on GitHub!**
