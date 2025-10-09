@@ -8,7 +8,7 @@ This application helps users discover new movies based on their interests by sug
 
 ## 🎥 Demo Video
 
-🎬 [Watch Demo Video](https://github.com/Jaikumarvanjare/Movie-Recommendation-System/blob/main/Demo.mp4)
+[![Watch the Demo](https://github.com/Jaikumarvanjare/Movie-Recommendation-System/raw/main/demo_thumbnail.png)](https://github.com/Jaikumarvanjare/Movie-Recommendation-System/blob/main/Demo.mp4)
 
 ---
 
