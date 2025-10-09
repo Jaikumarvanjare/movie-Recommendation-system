@@ -197,7 +197,7 @@ if titles is not None:
         </style>
     """, unsafe_allow_html=True)
 
-    st.title('🎬 CINEPHILE ENGINE')
+    st.title('🎬 CineBits')
 
     # --- DEMO CAROUSEL ---
     st.subheader("Featured Movies")
