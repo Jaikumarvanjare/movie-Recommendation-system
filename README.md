@@ -5,9 +5,13 @@ This application helps users discover new movies based on their interests by sug
 
 🔗 **Live Demo:** [Movie Recommender App](https://movie-recommendation-system-gzi2prtm5gxqq5hjnthstd.streamlit.app/)
 
-🎥 **Demo Video:**
 
-<video width="1919" height="1079" alt="image" src="https://github.com/Jaikumarvanjare/Movie-Recommendation-System/Demo.mp4" />
+## 🎥 Demo Video
+
+<video width="100%" controls>
+  <source src="https://github.com/Jaikumarvanjare/Movie-Recommendation-System/raw/main/demo.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 ---
 
 ## ✨ Features
