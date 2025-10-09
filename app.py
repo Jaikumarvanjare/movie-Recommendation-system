@@ -8,21 +8,24 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # --- CONFIGURATION & SETUP ---
 
-# Set Streamlit page configuration
+# Set Streamlit page configuration for a modern, wide layout.
 st.set_page_config(layout="wide")
 
-# Securely load the API key from Streamlit's secrets manager
+# Securely load the API key from Streamlit's secrets manager.
+# For local development, create a file .streamlit/secrets.toml with your key:
+# TMDB_API_KEY = "YOUR_API_KEY_HERE"
+# For deployment, add this key to your app's secrets in the Streamlit Cloud dashboard.
 try:
     API_KEY_AUTH = st.secrets["TMDB_API_KEY"]
 except KeyError:
     st.error("TMDb API key not found. Please add it to your Streamlit secrets.")
     st.stop()
 
-# Constants for API and image URLs
+# Constants for API and image URLs.
 POSTER_BASE_URL = "https://image.tmdb.org/t/p/w500/"
 PLACEHOLDER_IMAGE_URL = "https://via.placeholder.com/500x750.png?text=Poster+Not+Available"
 
-# Create a persistent session object to reuse connections for efficiency
+# Create a single, persistent requests.Session() object to reuse connections for efficiency.
 session = requests.Session()
 
 
@@ -34,27 +37,19 @@ def load_data_and_build_model(data_path='data.csv'):
     Loads the movie dataset, creates the recommendation model, and calculates the
     similarity matrix. The @st.cache_data decorator ensures this heavy computation
     only runs once.
-    Returns:
-        DataFrame, similarity_matrix, list of movie titles
     """
     try:
         df = pd.read_csv(data_path)
-        
-        # Create the feature vectors from the 'tags' column using CountVectorizer
         cv = CountVectorizer(max_features=5000, stop_words='english')
         vectors = cv.fit_transform(df['tags']).toarray()
-        
-        # Calculate the cosine similarity matrix
         similarity = cosine_similarity(vectors)
-        
         titles = df['title'].values
         return df, similarity, titles
-        
     except FileNotFoundError:
         st.error(f"The data file '{data_path}' was not found. Please make sure it's in the correct directory.")
         return None, None, None
 
-# Load the data and model
+# Load the data and build the model when the script starts.
 df, similarity, titles = load_data_and_build_model()
 
 
@@ -62,29 +57,34 @@ df, similarity, titles = load_data_and_build_model()
 
 def fetch_movie_details(movie_id):
     """
-    Fetches movie poster and overview from the TMDb API. Includes a retry mechanism
-    for robustness against transient network errors.
+    Fetches detailed movie information (title, poster, overview, year, rating) from the TMDb API.
+    Includes a retry mechanism for robustness.
     """
     retries = 3
-    for i in range(retries):
+    for _ in range(retries):
         try:
             url = f'https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY_AUTH}'
             response = session.get(url, timeout=10)
-            response.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
+            response.raise_for_status()
             data = response.json()
 
             poster_path = POSTER_BASE_URL + data['poster_path'] if data.get('poster_path') else None
             overview = data.get('overview', 'No description available.')
             title = data.get('title', 'Title not found.')
-            return title, poster_path, overview
+            # Extract year from release_date, handle missing data
+            year = data.get('release_date', 'N/A')[:4]
+            # Get vote_average and format it
+            rating = round(data.get('vote_average', 0), 1)
+            
+            return {'title': title, 'poster': poster_path, 'overview': overview, 'year': year, 'rating': rating}
 
-        except requests.exceptions.RequestException as e:
-            if i < retries - 1:
-                time.sleep(0.5) # Wait before retrying
-                continue
-            else:
-                # On final retry failure, return placeholder
-                return "Error", PLACEHOLDER_IMAGE_URL, "Could not fetch movie details."
+        except requests.exceptions.RequestException:
+            time.sleep(0.5)
+            continue
+    
+    # On final failure, return placeholder data
+    return {'title': 'Error', 'poster': PLACEHOLDER_IMAGE_URL, 'overview': 'Could not fetch details.', 'year': 'N/A', 'rating': 0}
+
 
 def get_recommendations(movie_title):
     """
@@ -107,13 +107,13 @@ def get_recommendations(movie_title):
             
             for future in as_completed(future_to_id):
                 try:
-                    title, poster, overview = future.result()
-                    if poster: # Only include movies with a valid poster
-                        recommendations.append({'title': title, 'poster': poster, 'overview': overview})
+                    movie_details = future.result()
+                    if movie_details['poster']: # Only include movies with a valid poster
+                        recommendations.append(movie_details)
                 except Exception as exc:
                     st.error(f'An error occurred while fetching movie details: {exc}')
 
-        return recommendations[:20] # Return the first 20 valid recommendations
+        return recommendations[:20]
         
     except (IndexError, KeyError):
         st.error(f"Movie '{movie_title}' not found in the dataset.")
@@ -132,9 +132,9 @@ def get_demo_movies():
         future_to_id = {executor.submit(fetch_movie_details, movie_id): movie_id for movie_id in demo_movie_ids}
         for future in as_completed(future_to_id):
             try:
-                title, poster, overview = future.result()
-                if poster:
-                    demo_movies.append({'title': title, 'poster': poster, 'overview': overview})
+                movie_details = future.result()
+                if movie_details['poster']:
+                    demo_movies.append(movie_details)
             except Exception:
                 pass # Ignore errors for demo movies
     return demo_movies
@@ -142,7 +142,7 @@ def get_demo_movies():
 # --- STREAMLIT UI ---
 
 if titles is not None:
-    # Custom CSS for dark theme, carousels, and poster overlay effect
+    # Custom CSS for dark theme, carousels, and an enhanced poster overlay effect
     st.markdown("""
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
@@ -189,8 +189,12 @@ if titles is not None:
             }
             .movie-card:hover .overlay { opacity: 1; }
             .overlay-title { font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem; }
+            .overlay-details { 
+                font-size: 0.8rem; color: #ccc; margin-bottom: 0.5rem; display: flex;
+                justify-content: space-between;
+            }
             .overlay-overview {
-                font-size: 0.75rem; max-height: 100px; overflow-y: auto;
+                font-size: 0.75rem; max-height: 80px; overflow-y: auto;
                 scrollbar-width: thin; scrollbar-color: #555 #262730;
             }
             .overlay-overview::-webkit-scrollbar { width: 5px; }
@@ -199,7 +203,7 @@ if titles is not None:
         </style>
     """, unsafe_allow_html=True)
 
-    st.title('🎬 MOVIE ')
+    st.title('🎬 MOVIE RECOMMENDER')
 
     # --- DEMO CAROUSEL ---
     st.subheader("Featured Movies")
@@ -213,6 +217,10 @@ if titles is not None:
                     <img src="{movie['poster']}" alt="{movie['title']} poster">
                     <div class="overlay">
                         <p class="overlay-title">{movie['title']}</p>
+                        <div class="overlay-details">
+                            <span>{movie['year']}</span>
+                            <span>⭐ {movie['rating']}</span>
+                        </div>
                         <p class="overlay-overview">{movie['overview']}</p>
                     </div>
                 </div>
@@ -249,12 +257,9 @@ if titles is not None:
     if st.session_state.recommendations:
         recs = st.session_state.recommendations
         
-        # Define the number of columns for the grid
         num_cols = 5
-        # Calculate the number of rows needed
         num_rows = (len(recs) + num_cols - 1) // num_cols
 
-        # Create a grid of recommendations
         for i in range(num_rows):
             cols = st.columns(num_cols)
             for j in range(num_cols):
@@ -267,6 +272,10 @@ if titles is not None:
                                 <img src="{movie['poster']}" alt="{movie['title']} poster">
                                 <div class="overlay">
                                     <p class="overlay-title">{movie['title']}</p>
+                                    <div class="overlay-details">
+                                        <span>{movie['year']}</span>
+                                        <span>⭐ {movie['rating']}</span>
+                                    </div>
                                     <p class="overlay-overview">{movie['overview']}</p>
                                 </div>
                             </div>
