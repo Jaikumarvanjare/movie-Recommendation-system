@@ -9,7 +9,7 @@ This application helps users discover new movies based on their interests by sug
 ## 🎥 Demo Video
 
 <video width="100%" controls>
-  <source src="https://github.com/Jaikumarvanjare/Movie-Recommendation-System/raw/main/demo.mp4" type="video/mp4">
+  <source src="https://github.com/Jaikumarvanjare/Movie-Recommendation-System/raw/main/Demo.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 ---
