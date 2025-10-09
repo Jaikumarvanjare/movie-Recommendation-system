@@ -1,4 +1,4 @@
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/6f0fbce3-c6a2-4dc4-abd6-81a13284078e" /># 🎬 Movie Recommender System
+ 🎬 Movie Recommender System
 
 A simple and intuitive **Movie Recommendation System** built with **Streamlit**.
 This application helps users discover new movies based on their interests by suggesting films similar to one they've selected.
@@ -7,8 +7,7 @@ This application helps users discover new movies based on their interests by sug
 
 🎥 **Demo Video:**
 
-[https://github.com/Jaikumarvanjare/Movie-Recommendation-System/demo.mp4](https://github.com/Jaikumarvanjare/Movie-Recommendation-System/demo.mp4)
-
+https://user-images.githubusercontent.com/104669486/201644731-a45a5806-eddd-46bb-97e6-29f1aa61354e.mp4
 ---
 
 ## ✨ Features
@@ -78,8 +77,7 @@ Movie-Recommendation-System/
 
 ## 📸 Preview
 
-(https://raw.githubusercontent.com/Jaikumarvanjare/Movie-Recommendation-System/screenshot.png)
-
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/6f0fbce3-c6a2-4dc4-abd6-81a13284078e" />
 ---
 
 ## 🤝 Contributing
