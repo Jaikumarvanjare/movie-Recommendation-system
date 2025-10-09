@@ -11,15 +11,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # Set Streamlit page configuration for a modern, wide layout.
 st.set_page_config(layout="wide")
 
-# Securely load the API key from Streamlit's secrets manager.
-# For local development, create a file .streamlit/secrets.toml with your key:
-# TMDB_API_KEY = "YOUR_API_KEY_HERE"
-# For deployment, add this key to your app's secrets in the Streamlit Cloud dashboard.
-try:
-    API_KEY_AUTH = st.secrets["TMDB_API_KEY"]
-except KeyError:
-    st.error("TMDb API key not found. Please add it to your Streamlit secrets.")
-    st.stop()
+# API Key hardcoded for simplicity.
+# WARNING: It is not recommended to expose keys in code for public repositories.
+API_KEY_AUTH = "73b5ae70c690b440e91201075adf1d04"
 
 # Constants for API and image URLs.
 POSTER_BASE_URL = "https://image.tmdb.org/t/p/w500/"
@@ -203,7 +197,7 @@ if titles is not None:
         </style>
     """, unsafe_allow_html=True)
 
-    st.title('🎬 MOVIE RECOMMENDER')
+    st.title('🎬 CINEPHILE ENGINE')
 
     # --- DEMO CAROUSEL ---
     st.subheader("Featured Movies")
